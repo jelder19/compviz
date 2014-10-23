@@ -23,7 +23,7 @@ int main(int argc, const char * argv[]) {
     return -1;
   }
 
-  namedWindow("Display window", WINDOW_AUTOSIZE);
+  namedWindow("opencv", WINDOW_AUTOSIZE);
   
   /**
    * Initialize HoG.
