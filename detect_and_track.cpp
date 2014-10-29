@@ -11,12 +11,13 @@ using namespace cv;
 
 /** Function Headers */
 void detectFaces(Mat);
-void trackFaces(Mat, Rect, unsigned);
+void trackFaces(Mat, Rect);
 
 /** Global variables */
 String face_cascade_name = "haarcascade_frontalface_alt.xml";
 CascadeClassifier face_cascade;
-String window_name = "Capture - Face detection";
+String trackingWindow = "Tracking Window";
+String faceWindow = "Captured Faces";
 RNG rng(12345);
 vector<Rect> faces;
 Mat frame, hsv, hue, mask, hist, histimg = Mat::zeros(200, 320, CV_8UC3), backproj;
@@ -45,18 +46,15 @@ int main(int argc, const char** argv) {
 				// if faces is empty, populate faces vector
 				if(faces.empty()){
 					detectFaces(frame);
-					imshow(window_name, frame); 
+					imshow(trackingWindow, frame); 
 				}else{
 					for(unsigned f = 0; f < faces.size(); f++){
-						cin.ignore();
-
-						trackFaces(frame, faces[f], f);
+						trackFaces(frame, faces[f]);
 					}
 
-					imshow(window_name, frame);
+					imshow(trackingWindow, frame);
 				}
 			}else{ 
-			
 				printf(" --(!) No captured frame -- Break!"); 
 				break; 
 			}
@@ -78,10 +76,17 @@ void detectFaces(Mat frame) {
 
 	//-- Detect faces
 	face_cascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
+
+	for(size_t i = 0; i < faces.size(); i++){
+	  Point center(faces[i].x + faces[i].width * 0.5, faces[i].y + faces[i].height * 0.5);
+	  ellipse(frame, center, Size(faces[i].width * 0.5, faces[i].height * 0.5), 0, 0, 360, Scalar(255, 0, 255), 4, 8, 0);
+	}	
+
+	imshow(faceWindow, frame);
 }
 
 /** @function trackFaces */
-void trackFaces(Mat frame, Rect trackWindow, unsigned f) {
+void trackFaces(Mat frame, Rect trackWindow) {
 	int _vmin = vmin, _vmax = vmax;
 	int ch[] = {0, 0};
 
@@ -130,6 +135,5 @@ void trackFaces(Mat frame, Rect trackWindow, unsigned f) {
     Rect(0, 0, cols, rows);
   }
 
-  faces[f] = trackWindow; 
 	ellipse(frame, trackBox, Scalar(0,0,255), 3);
 }
