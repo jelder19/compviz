@@ -47,8 +47,9 @@ int main(int argc, const char** argv) {
 					detectFaces(frame);
 					imshow(window_name, frame); 
 				}else{
+					cout << "Faces not empty" << endl;
 					for(unsigned f = 0; f < faces.size(); f++){
-						cin.ignore();
+						//cin.ignore();
 
 						trackFaces(frame, faces[f], f);
 					}
@@ -71,6 +72,7 @@ int main(int argc, const char** argv) {
 
 /** @function detectFaces */
 void detectFaces(Mat frame) {
+	cout << "Detecting Faces..." << endl;
 	Mat frame_gray;
 
 	cvtColor(frame, frame_gray, CV_BGR2GRAY);
@@ -82,6 +84,7 @@ void detectFaces(Mat frame) {
 
 /** @function trackFaces */
 void trackFaces(Mat frame, Rect trackWindow, unsigned f) {
+	cout << "Tracking Faces..." << endl;
 	int _vmin = vmin, _vmax = vmax;
 	int ch[] = {0, 0};
 
@@ -131,5 +134,5 @@ void trackFaces(Mat frame, Rect trackWindow, unsigned f) {
   }
 
   faces[f] = trackWindow; 
-	ellipse(frame, trackBox, Scalar(0,0,255), 3);
+  ellipse(frame, trackBox, Scalar(0,0,255), 3);
 }
