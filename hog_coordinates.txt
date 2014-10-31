@@ -1,10 +1,1 @@
-
-hog_culc.jpeg
-
-0: (407, 309)
-1: (537, 356)
-2: (231, 353)
-3: (161, 288)
-4: (108, 294)
-5: (503, 311)
-6: (771, 330)
+The Viola-Jones detection algorithm is commonly used in facial recognition/tracking. It examines groups of pixels based on complex feature types, and decreases the effect of false-positive identifications through the use of cascading. This algorithm is implemented in openCV (as cvHaarDetectObjects() ) and the cascading effect is also easily achieved using other built-in openCV methods.
