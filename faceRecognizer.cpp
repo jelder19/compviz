@@ -33,11 +33,13 @@ using namespace std;
 void detectFaces(Mat frame, std::vector<cv::Rect_<int> > *theFaces,CascadeClassifier theCascade);
 void recognizeFaces(Mat *frame, vector< Rect_<int> > faces, string csv_path, int image_width, int image_height);
 static void read_csv(const string& filename, vector<Mat>& images, vector<int>& labels);
-void trackFaces(Mat *frame, Rect trackWindow, unsigned f, std::vector<cv::Rect_<int> > *faces);
-string getSubjectName(int thePrediction, string csv_path);
+string getSubjectName(int thePrediction, double theConfidence, string csv_path);
 
 String face_cascade_name = "/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml";
+
 Ptr<FaceRecognizer> model;
+Ptr<FaceRecognizer> LBPHmodel;
+double thresh = 0.0;
 
 int main(int argc, const char *argv[]) {
     // Check for valid command line arguments, print usage
@@ -71,8 +73,15 @@ int main(int argc, const char *argv[]) {
     model = createFisherFaceRecognizer();
     cout << "Done!" << endl;
 
-    cout << "Training the model... ";
+    cout << "Creating LBPH recognizer model... ";
+    LBPHmodel = createLBPHFaceRecognizer(1,8,8,8,DBL_MAX);
+    cout << "Done!" << endl;
+
+
+    cout << "Training the models... ";
     model->train(images, labels);
+    model->set("threshold",500);
+    LBPHmodel->train(images, labels);
     cout << "Done!" << endl;
     // That's it for learning the Face Recognition model. You now
     // need to create the classifier for the task of Face Detection.
@@ -167,85 +176,6 @@ void detectFaces(Mat frame, std::vector<cv::Rect_<int> > *theFaces,CascadeClassi
     theCascade.detectMultiScale(frame_gray, *theFaces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
 }
 
-/** @function trackFaces */
-void trackFaces(Mat *frame_ptr, Rect trackWindow, unsigned f, std::vector<cv::Rect_<int> > *faces) {
-
-    Mat frame = *frame_ptr;
-    Mat hsv, hue, mask, hist, histimg = Mat::zeros(200, 320, CV_8UC3), backproj;
-    int vmin = 10, vmax = 256, smin = 30;
-    int hsize = 16;
-    float hranges[] = {0,180};
-    const float* phranges = hranges;
-
-    int _vmin = vmin; 
-    int _vmax = vmax;
-    int ch[] = {0, 0};
-
-    cvtColor(frame, hsv, COLOR_BGR2HSV);
-    
-    inRange(hsv, 
-        Scalar(0, smin, MIN(_vmin,_vmax)),
-        Scalar(180, 256, MAX(_vmin,_vmax)), 
-    mask
-    );
-
-  hue.create(hsv.size(), hsv.depth());
-  mixChannels(&hsv, 1, &hue, 1, ch, 1);
-
-  Mat roi(hue, trackWindow), maskroi(mask, trackWindow);
-  calcHist(&roi, 1, 0, maskroi, hist, 1, &hsize, &phranges);
-  normalize(hist, hist, 0, 255, NORM_MINMAX);
-
-  histimg = Scalar::all(0);
-  int binW = histimg.cols / hsize;
-  Mat buf(1, hsize, CV_8UC3);
-  
-  for(int i = 0; i < hsize; i++ )
-    buf.at<Vec3b>(i) = Vec3b(saturate_cast<uchar>(i*180./hsize), 255, 255);
-  
-  cvtColor(buf, buf, COLOR_HSV2BGR);
-
-  for(int i = 0; i < hsize; i++ ){
-    int val = saturate_cast<int>(hist.at<float>(i)*histimg.rows/255);
-    
-    rectangle(histimg, 
-        Point(i*binW,histimg.rows),
-        Point((i+1)*binW,histimg.rows - val),
-      Scalar(buf.at<Vec3b>(i)), -1, 8
-    );
-  }
-
-  calcBackProject(&hue, 1, 0, hist, backproj, &phranges);
-  backproj &= mask;
-  RotatedRect trackBox = CamShift(backproj, trackWindow, TermCriteria(TermCriteria::EPS | TermCriteria::COUNT, 10, 1));
-  
-  if(trackWindow.area() <= 1) {
-    int cols = backproj.cols, rows = backproj.rows, r = (MIN(cols, rows) + 5)/6;
-    trackWindow = Rect(trackWindow.x - r, trackWindow.y - r,
-                        trackWindow.x + r, trackWindow.y + r) &
-    Rect(0, 0, cols, rows);
-  }
-
-  (*faces)[f] = trackWindow; 
-  ellipse(*frame_ptr, trackBox, Scalar(0,0,255), 3);
-}
-
-string getSubjectName(int thePrediction, string csv_path){
-    string predictionString = format("%d",thePrediction);
-    ifstream file (csv_path.c_str());
-    string line;
-    string base_path = "/home/ryan/compviz/facerec/data/at/";
-    string subj_name;
-    bool done = 0;
-    while (file.good()){
-        getline (file, line, ';'); // read a string until ';'
-        if(line.find(predictionString) != std::string::npos){
-            //this line contains the info we are looking for (the name of the matched subject) 
-            return line.substr(base_path.length()+predictionString.length()+1,line.length()-base_path.length()-predictionString.length()-7);
-        }
-    }
-
-}
 
 void recognizeFaces(Mat *frame, vector< Rect_<int> > faces, string csv_path, int target_width, int target_height){
        Mat gray;
@@ -265,21 +195,74 @@ void recognizeFaces(Mat *frame, vector< Rect_<int> > faces, string csv_path, int
             //
             // Since I am showing the Fisherfaces algorithm here, I also show how to resize the
             // face you have just found:
-            Mat face_resized;
-            cv::resize(face, face_resized, Size(target_width, target_height), 1.0, 1.0, INTER_CUBIC);
-            // Now perform the prediction, see how easy that is:
-            int prediction = model->predict(face_resized);
+
+            Mat face_resized, norm_resized, gray, norm, float_gray, blur, num, den;
+
+             // convert to floating-point image
+             //face.convertTo(float_gray, CV_32F, 1.0/255.0);
+             // numerator = img - gauss_blur(img)
+             //cv::GaussianBlur(float_gray, blur, Size(0,0), 2, 2);
+             // num = float_gray - blur;
+             // denominator = sqrt(gauss_blur(img^2))
+             //cv::GaussianBlur(num.mul(num), blur, Size(0,0), 20, 20);
+             //cv::pow(blur, 0.5, den);
+             // output = numerator / denominator
+             //norm = num / den;
+             // normalize output into [0,1]
+             //cv::normalize(norm, norm, 0.0, 1.0, NORM_MINMAX, -1);
+
+             //cv::resize(norm, norm_resized, Size(target_width, target_height), 1.0, 1.0, INTER_CUBIC);
+
+            
+            //imshow("Normalized Face",norm);
+            // Now perform the prediction:
+            int predictionID;
+            double predictionConfidence;
+            model->predict(face_resized,predictionID,predictionConfidence);
             // And finally write all we've found out to the original image!
             // First of all draw a green rectangle around the detected face:
             rectangle(*frame, face_i, CV_RGB(0, 255,0), 1);
-
-
             // Calculate the position for annotated text (make sure we don't
             // put illegal values in there):
             int pos_x = std::max(face_i.tl().x - 10, 0);
             int pos_y = std::max(face_i.tl().y - 10, 0);
             // And now put it into the image:
-            string subj_name = getSubjectName(prediction,csv_path);
-            putText(*frame, subj_name, Point(pos_x, pos_y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0), 2.0);
+            string subj_name = getSubjectName(predictionID,predictionConfidence,csv_path);
+            putText(*frame, format("%s %d",subj_name.c_str(),predictionConfidence), Point(pos_x, pos_y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0), 2.0);
+
+            LBPHmodel->predict(face,predictionID,predictionConfidence);
+            rectangle(*frame, face_i, CV_RGB(0,0,255), 1);
+            // Calculate the position for annotated text (make sure we don't
+            // put illegal values in there):
+            pos_x = std::max(face_i.tl().x + 10, 0);
+            pos_y = std::max(face_i.tl().y + 10, 0);
+            // And now put it into the image:
+            subj_name = getSubjectName(predictionID,predictionConfidence,csv_path);
+            putText(*frame, format("%s %d",subj_name.c_str(),predictionConfidence), Point(pos_x, pos_y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
         }
+}
+
+string getSubjectName(int thePrediction, double theConfidence, string csv_path){
+    double confidenceThresh = 300;
+
+     if(theConfidence >= confidenceThresh){
+       //  return "unknown";
+     }
+
+    string predictionString = format("%d",thePrediction);
+    ifstream file (csv_path.c_str());
+    string line;
+    string base_path = "/home/ryan/compviz/facerec/data/at/";
+    string subj_name;
+    bool done = 0;
+    while (file.good()){
+        getline (file, line, ';'); // read a string until ';'
+        if(line.find(predictionString) != std::string::npos){
+            //this line contains the info we are looking for (the name of the matched subject) 
+            return line.substr(base_path.length()+predictionString.length()+1,line.length()-base_path.length()-predictionString.length()-7);
+        }
+    }
+
+    return "something went wrong";
+
 }

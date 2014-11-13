@@ -57,55 +57,70 @@ void captureTheFace(int picNum, Mat frame, VideoCapture cap, Mat *theFacePtr){
     // Get the height from the first image. We'll need this
     // later in code to reshape the images to their original
     // size AND we need to reshape incoming faces to this size:
-    int im_width = images[0].cols;
-    int im_height = images[0].rows;
-
+    int im_width = 512;
+    int im_height = 512;
+    /*if(!images[0].empty()){
+        im_width = images[0].cols;
+        im_height = images[0].rows;
+    }else{
+        im_width = 512;
+        im_height = 512;
+    }
+*/
     CascadeClassifier haar_cascade;
     haar_cascade.load(face_cascade_name);
 
   
     std::cout << "Press SPACE to take picture number " << picNum << "..." << endl;
 
-      
+      Mat original, gray, norm, float_gray, blur, num, den;
+
       for(;;) {
         cap >> frame;
-        // Clone the current frame:
-        Mat original = frame.clone();
-        // Convert the current frame to grayscale:
-        Mat gray;
+        // Clone the current frame
+        original = frame.clone();
+        // Convert the current frame to grayscale and perform illumination normalization
         cvtColor(original, gray, CV_BGR2GRAY);
+       
         // Find the faces in the frame:
         vector< Rect_<int> > faces;
-        haar_cascade.detectMultiScale(gray, faces);
-        // At this point you have the position of the faces in
-        // faces. Now we'll get the faces, make a prediction and
-        // annotate it in the video. Cool or what?
-        for(int i = 0; i < faces.size(); i++) {
-            // Process face by face:
-            Rect face_i = faces[i];
-            // Crop the face from the image. So simple with OpenCV C++:
-            Mat face = gray(face_i);
-            // Resizing the face is necessary for Eigenfaces and Fisherfaces. You can easily
-            // verify this, by reading through the face recognition tutorial coming with OpenCV.
-            // Resizing IS NOT NEEDED for Local Binary Patterns Histograms, so preparing the
-            // input data really depends on the algorithm used.
-            //
-            // I strongly encourage you to play around with the algorithms. See which work best
-            // in your scenario, LBPH should always be a contender for robust face recognition.
-            //
-            // Since I am showing the Fisherfaces algorithm here, I also show how to resize the
-            // face you have just found:
-    
-            cv::resize(face, *theFacePtr, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
 
+        haar_cascade.detectMultiScale(gray, faces);
+        
+        if(faces.size()){
+
+            // Process face:
+            Rect face_i = faces[0];
+            // Crop the face from the image:
+            Mat face = gray(face_i);
+
+            
+            cv::resize(face, face, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
+
+            // convert to floating-point image
+            face.convertTo(float_gray, CV_32F, 1.0/255.0);
+            // numerator = img - gauss_blur(img)
+            cv::GaussianBlur(float_gray, blur, Size(0,0), 2, 2);
+            num = float_gray - blur;
+            // denominator = sqrt(gauss_blur(img^2))
+            cv::GaussianBlur(num.mul(num), blur, Size(0,0), 20, 20);
+            cv::pow(blur, 0.5, den);
+            // output = numerator / denominator
+            norm = num / den;
+            // normalize output into [0,1]
+            cv::normalize(norm, norm, 0.0, 1.0, NORM_MINMAX, -1);
+            *theFacePtr = norm;
             // First of all draw a green rectangle around the detected face:
             rectangle(original, face_i, CV_RGB(0, 255,0), 1);
+
+            imshow("Face", norm);
         }
         // Show the result:
         imshow("NewFaceCapture", original);
+        
         // And display it:
-        char key = (char) waitKey(20);
-        // Exit this loop on escape:
+        char key = (char) waitKey(32);
+        // Exit this loop on
         if(key == 32)
             break;
     }
@@ -144,7 +159,7 @@ int main(int argc, const char *argv[])
     cout << "\t Checking directory structure" << endl;
 
     string pgm_path = format("/home/ryan/compviz/facerec/data/at/%s",subject_name.c_str());
-    int n = 1;
+    int n = 0;
     struct stat st = {0};
     if (stat(pgm_path.c_str(), &st) == -1) {
         mkdir(pgm_path.c_str(), 0777);
@@ -160,7 +175,7 @@ int main(int argc, const char *argv[])
         }
      }
 
-    for(int i=n;i<numPix+n;i++){
+    for(int i=n;i<numPix+n-1;i++){
         Mat rawFrame;
 
         cap >> rawFrame; // get a new frame from camera
