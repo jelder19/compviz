@@ -1,8 +1,9 @@
-#include <opencv2/opencv.hpp>
+
+#include <opencv2/core/utility.hpp>
 #include "opencv2/video/tracking.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/objdetect/objdetect.hpp"
+#include "opencv2/imgproc.hpp"
+#include "opencv2/videoio.hpp"
+#include "opencv2/highgui.hpp"
 
 #include <iostream>
 #include <ctype.h>
@@ -19,6 +20,55 @@ bool showHist = true;
 Point origin;
 Rect selection;
 int vmin = 10, vmax = 256, smin = 30;
+
+static void onMouse( int event, int x, int y, int, void* )
+{
+    if( selectObject )
+    {
+        selection.x = MIN(x, origin.x);
+        selection.y = MIN(y, origin.y);
+        selection.width = std::abs(x - origin.x);
+        selection.height = std::abs(y - origin.y);
+
+        selection &= Rect(0, 0, image.cols, image.rows);
+    }
+
+    switch( event )
+    {
+    case EVENT_LBUTTONDOWN:
+        origin = Point(x,y);
+        selection = Rect(x,y,0,0);
+        selectObject = true;
+        break;
+    case EVENT_LBUTTONUP:
+        selectObject = false;
+        if( selection.width > 0 && selection.height > 0 )
+            trackObject = -1;
+        break;
+    }
+}
+
+static void help()
+{
+    cout << "\nThis is a demo that shows mean-shift based tracking\n"
+            "You select a color objects such as your face and it tracks it.\n"
+            "This reads from video camera (0 by default, or the camera number the user enters\n"
+            "Usage: \n"
+            "   ./camshiftdemo [camera number]\n";
+
+    cout << "\n\nHot keys: \n"
+            "\tESC - quit the program\n"
+            "\tc - stop the tracking\n"
+            "\tb - switch to/from backprojection view\n"
+            "\th - show/hide object histogram\n"
+            "\tp - pause video\n"
+            "To initialize tracking, select the object with mouse\n";
+}
+
+const char* keys =
+{
+    "{@camera_number| 0 | camera number}"
+};
 
 int main( int argc, const char** argv )
 {
@@ -39,7 +89,7 @@ int main( int argc, const char** argv )
         help();
         cout << "***Could not initialize capturing...***\n";
         cout << "Current parameter's value: \n";
-
+        parser.printMessage();
         return -1;
     }
 
@@ -117,7 +167,7 @@ int main( int argc, const char** argv )
 
                 if( backprojMode )
                     cvtColor( backproj, image, COLOR_GRAY2BGR );
-                ellipse( image, trackBox, Scalar(0,0,255), 3, 4 );
+                ellipse( image, trackBox, Scalar(0,0,255), 3, LINE_AA );
             }
         }
         else if( trackObject < 0 )
@@ -161,3 +211,4 @@ int main( int argc, const char** argv )
 
     return 0;
 }
+

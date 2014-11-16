@@ -11,12 +11,13 @@ using namespace cv;
 
 /** Function Headers */
 void detectFaces(Mat);
-void trackFaces(Mat, Rect, unsigned);
+void trackFaces(Mat, Rect);
 
 /** Global variables */
 String face_cascade_name = "haarcascade_frontalface_alt.xml";
 CascadeClassifier face_cascade;
-String window_name = "Capture - Face detection";
+String trackingWindow = "Tracking Window";
+String faceWindow = "Captured Faces";
 RNG rng(12345);
 vector<Rect> faces;
 Mat frame, hsv, hue, mask, hist, histimg = Mat::zeros(200, 320, CV_8UC3), backproj;
@@ -45,19 +46,22 @@ int main(int argc, const char** argv) {
 				// if faces is empty, populate faces vector
 				if(faces.empty()){
 					detectFaces(frame);
-					imshow(window_name, frame); 
+					imshow(trackingWindow, frame); 
 				}else{
 					cout << "Faces not empty" << endl;
 					for(unsigned f = 0; f < faces.size(); f++){
+<<<<<<< HEAD
 						//cin.ignore();
 
 						trackFaces(frame, faces[f], f);
+=======
+						trackFaces(frame, faces[f]);
+>>>>>>> d2131bad4faae32361c8c1740a52f5d1dae644ef
 					}
 
-					imshow(window_name, frame);
+					imshow(trackingWindow, frame);
 				}
 			}else{ 
-			
 				printf(" --(!) No captured frame -- Break!"); 
 				break; 
 			}
@@ -80,11 +84,22 @@ void detectFaces(Mat frame) {
 
 	//-- Detect faces
 	face_cascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
+
+	for(size_t i = 0; i < faces.size(); i++){
+	  Point center(faces[i].x + faces[i].width * 0.5, faces[i].y + faces[i].height * 0.5);
+	  ellipse(frame, center, Size(faces[i].width * 0.5, faces[i].height * 0.5), 0, 0, 360, Scalar(255, 0, 255), 4, 8, 0);
+	}	
+
+	imshow(faceWindow, frame);
 }
 
 /** @function trackFaces */
+<<<<<<< HEAD
 void trackFaces(Mat frame, Rect trackWindow, unsigned f) {
 	cout << "Tracking Faces..." << endl;
+=======
+void trackFaces(Mat frame, Rect trackWindow) {
+>>>>>>> d2131bad4faae32361c8c1740a52f5d1dae644ef
 	int _vmin = vmin, _vmax = vmax;
 	int ch[] = {0, 0};
 
@@ -133,6 +148,10 @@ void trackFaces(Mat frame, Rect trackWindow, unsigned f) {
     Rect(0, 0, cols, rows);
   }
 
+<<<<<<< HEAD
   faces[f] = trackWindow; 
   ellipse(frame, trackBox, Scalar(0,0,255), 3);
+=======
+	ellipse(frame, trackBox, Scalar(0,0,255), 3);
+>>>>>>> d2131bad4faae32361c8c1740a52f5d1dae644ef
 }
