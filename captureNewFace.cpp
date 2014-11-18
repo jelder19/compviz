@@ -151,15 +151,16 @@ int main(int argc, const char *argv[])
         cout << "Path to CSV File: " << csv_path << endl;
 
 int capNum;
-for(capNum=-1;capNum<11;capNum++){
-    VideoCapture cap(capNum); // attempt to open the camera
-    if(!cap.isOpened()){  // check if we succeeded
-        cout << "Capture " << capNum << " failed to open. Check to make sure the camera is configured correctly." << endl;
-       if(capNum == 10)
-          return -1;
-    }else{
-	cout << "Capture  " << capNum << "opened successfully" << endl;
-	break;
+    for(capNum=-1;capNum<11;capNum++){
+        VideoCapture cap(capNum); // attempt to open the camera
+        if(!cap.isOpened()){  // check if we succeeded
+            cout << "Capture " << capNum << " failed to open. Check to make sure the camera is configured correctly." << endl;
+            if(capNum == 10)
+                return -1;
+        }else{
+	       cout << "Capture  " << capNum << "opened successfully" << endl;
+	       break;
+        }
     }
 
     cout << "\t Checking directory structure" << endl;
