@@ -154,6 +154,7 @@ int main(int argc, const char *argv[])
 
     VideoCapture cap(1); // open the default camera
     if(!cap.isOpened())  // check if we succeeded
+        cout << "Capture failed to open. Check to make sure the camera is configured correctly." << endl;
         return -1;
 
     cout << "\t Checking directory structure" << endl;
