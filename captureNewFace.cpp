@@ -158,7 +158,7 @@ int main(int argc, const char *argv[])
 
     cout << "\t Checking directory structure" << endl;
 
-    string pgm_path = format("/home/ryan/compviz/facerec/data/at/%s",subject_name.c_str());
+    string pgm_path = format("facerec/data/at/%s",subject_name.c_str());
     int n = 0;
     struct stat st = {0};
     if (stat(pgm_path.c_str(), &st) == -1) {
@@ -182,7 +182,7 @@ int main(int argc, const char *argv[])
 
         cout << "Preparing image " << i << ":" << endl;
 
-        pgm_path =format("/home/ryan/compviz/facerec/data/at/%s/%d.pgm",subject_name.c_str(),i);
+        pgm_path =format("facerec/data/at/%s/%d.pgm",subject_name.c_str(),i);
 
         cout << "Preparing to write image to " << pgm_path << endl;
 
