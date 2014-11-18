@@ -159,7 +159,7 @@ int capNum;
                 return -1;
         }else{
 	       cout << "Capture  " << capNum << "opened successfully" << endl;
-           captest.close();
+           captest.release();
 	       break;
         }
     }
