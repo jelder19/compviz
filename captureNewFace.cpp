@@ -150,12 +150,21 @@ int main(int argc, const char *argv[])
         cout << "Number of Pictures: " << numPix << endl;
         cout << "Path to CSV File: " << csv_path << endl;
 
+VideoCapture cap;
+int capNum;
+for(capNum=-1;capNum<11;capNum++){
+    cap(capNum); // attempt to open the camera
+    if(!cap.isOpened()){  // check if we succeeded
+        cout << "Capture " << capNum << " failed to open. Check to make sure the camera is configured correctly." << endl;
+       // return -1;
+    }else{
+	cout << "Capture  " << capNum << "opened successfully" << endl;
+	break;
+    }
+}
 
-
-    VideoCapture cap(1); // open the default camera
-    if(!cap.isOpened())  // check if we succeeded
-        cout << "Capture failed to open. Check to make sure the camera is configured correctly." << endl;
-        return -1;
+    if(!cap.isOpened())
+	return -1;
 
     cout << "\t Checking directory structure" << endl;
 
