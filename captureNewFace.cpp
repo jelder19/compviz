@@ -98,22 +98,22 @@ void captureTheFace(int picNum, Mat frame, VideoCapture cap, Mat *theFacePtr){
             cv::resize(face, face, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
 
             // convert to floating-point image
-            face.convertTo(float_gray, CV_32F, 1.0/255.0);
+            //face.convertTo(float_gray, CV_32F, 1.0/255.0);
             // numerator = img - gauss_blur(img)
-            cv::GaussianBlur(float_gray, blur, Size(0,0), 2, 2);
-            num = float_gray - blur;
+            //cv::GaussianBlur(float_gray, blur, Size(0,0), 2, 2);
+            //num = float_gray - blur;
             // denominator = sqrt(gauss_blur(img^2))
-            cv::GaussianBlur(num.mul(num), blur, Size(0,0), 20, 20);
-            cv::pow(blur, 0.5, den);
+            //cv::GaussianBlur(num.mul(num), blur, Size(0,0), 20, 20);
+            //cv::pow(blur, 0.5, den);
             // output = numerator / denominator
-            norm = num / den;
+            //norm = num / den;
             // normalize output into [0,1]
-            cv::normalize(norm, norm, 0.0, 1.0, NORM_MINMAX, -1);
-            *theFacePtr = norm;
+            //cv::normalize(norm, norm, 0.0, 1.0, NORM_MINMAX, -1);
+            *theFacePtr = face;
             // First of all draw a green rectangle around the detected face:
             rectangle(original, face_i, CV_RGB(0, 255,0), 1);
 
-            imshow("Face", norm);
+            imshow("Face", face);
         }
         // Show the result:
         imshow("NewFaceCapture", original);
@@ -152,7 +152,7 @@ int main(int argc, const char *argv[])
 
 
 
-    VideoCapture cap(-1); // open the default camera
+    VideoCapture cap(1); // open the default camera
     if(!cap.isOpened())  // check if we succeeded
         return -1;
 

@@ -38,7 +38,7 @@ string getSubjectName(int thePrediction, double theConfidence, string csv_path);
 String face_cascade_name = "/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml";
 
 Ptr<FaceRecognizer> model;
-Ptr<FaceRecognizer> LBPHmodel;
+//Ptr<FaceRecognizer> LBPHmodel;
 double thresh = 0.0;
 
 int main(int argc, const char *argv[]) {
@@ -51,7 +51,7 @@ int main(int argc, const char *argv[]) {
     }
     // Get the path to your CSV:
     string fn_csv = string(argv[1]);
-    int deviceId = -1;
+    int deviceId = 1;
     // These vectors hold the images and corresponding labels:
     vector<Mat> images;
     vector<int> labels;
@@ -73,15 +73,15 @@ int main(int argc, const char *argv[]) {
     model = createFisherFaceRecognizer();
     cout << "Done!" << endl;
 
-    cout << "Creating LBPH recognizer model... ";
-    LBPHmodel = createLBPHFaceRecognizer(1,8,8,8,DBL_MAX);
-    cout << "Done!" << endl;
+   //cout << "Creating LBPH recognizer model... ";
+   // LBPHmodel = createLBPHFaceRecognizer(1,8,8,8,DBL_MAX);
+   // cout << "Done!" << endl;
 
 
     cout << "Training the models... ";
     model->train(images, labels);
-    model->set("threshold",500);
-    LBPHmodel->train(images, labels);
+    //model->set("threshold",500);
+    //LBPHmodel->train(images, labels);
     cout << "Done!" << endl;
     // That's it for learning the Face Recognition model. You now
     // need to create the classifier for the task of Face Detection.
@@ -110,28 +110,16 @@ int main(int argc, const char *argv[]) {
         cap >> frame;
         // Clone the current frame:
         Mat original = frame.clone();
-        
 
+        detectFaces(original, &faces, haar_cascade);
 
-        // if(loopNum == 0){
-        //     //Detect the face(s)
-             detectFaces(original, &faces, haar_cascade);
-        // }else if(loopNum == 300){
-        //     loopNum = 0;
-        // }else{
-        // //track the face(s)
-        //     for(unsigned f = 0; f < faces.size(); f++){
-        //         trackFaces(&original, faces[f], f, &faces);
-        //     }
-
-        // }
-
+        if(faces.size()){
         //Recognize the face(s)
-        recognizeFaces(&original, faces, fn_csv, im_width, im_height);
-
-        //increment the loopNum
-        //loopNum++;
-
+            recognizeFaces(&original, faces, fn_csv, im_width, im_height);
+        }else{
+            putText(original,"No Faces in the Frame", Point(10, 10), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255,0,0), 2.0);
+        }
+       
         // Show the result:
         imshow("face_recognizer", original);
         // And display it:
@@ -211,10 +199,10 @@ void recognizeFaces(Mat *frame, vector< Rect_<int> > faces, string csv_path, int
              // normalize output into [0,1]
              //cv::normalize(norm, norm, 0.0, 1.0, NORM_MINMAX, -1);
 
-             //cv::resize(norm, norm_resized, Size(target_width, target_height), 1.0, 1.0, INTER_CUBIC);
+             cv::resize(face, face_resized, Size(target_width, target_height), 1.0, 1.0, INTER_CUBIC);
 
             
-            //imshow("Normalized Face",norm);
+            //imshow("Face",face);
             // Now perform the prediction:
             int predictionID;
             double predictionConfidence;
@@ -227,18 +215,20 @@ void recognizeFaces(Mat *frame, vector< Rect_<int> > faces, string csv_path, int
             int pos_x = std::max(face_i.tl().x - 10, 0);
             int pos_y = std::max(face_i.tl().y - 10, 0);
             // And now put it into the image:
+
+
             string subj_name = getSubjectName(predictionID,predictionConfidence,csv_path);
             putText(*frame, format("%s %d",subj_name.c_str(),predictionConfidence), Point(pos_x, pos_y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0), 2.0);
 
-            LBPHmodel->predict(face,predictionID,predictionConfidence);
-            rectangle(*frame, face_i, CV_RGB(0,0,255), 1);
-            // Calculate the position for annotated text (make sure we don't
-            // put illegal values in there):
-            pos_x = std::max(face_i.tl().x + 10, 0);
-            pos_y = std::max(face_i.tl().y + 10, 0);
-            // And now put it into the image:
-            subj_name = getSubjectName(predictionID,predictionConfidence,csv_path);
-            putText(*frame, format("%s %d",subj_name.c_str(),predictionConfidence), Point(pos_x, pos_y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
+            // LBPHmodel->predict(face,predictionID,predictionConfidence);
+            // rectangle(*frame, face_i, CV_RGB(0,0,255), 1);
+            // // Calculate the position for annotated text (make sure we don't
+            // // put illegal values in there):
+            // pos_x = std::max(face_i.tl().x + 10, 0);
+            // pos_y = std::max(face_i.tl().y + 10, 0);
+            // // And now put it into the image:
+            // subj_name = getSubjectName(predictionID,predictionConfidence,csv_path);
+            // putText(*frame, format("%s %d",subj_name.c_str(),predictionConfidence), Point(pos_x, pos_y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
         }
 }
 
