@@ -19,6 +19,7 @@ vector<Rect> detectPeople(Mat);
 void camshiftTrack(Mat, Rect);
 void detectFaces(Mat);
 void recognizeFaces(Mat *frame, vector< Rect_<int> > faces, string csv_path, int image_width, int image_height);
+string recognizeFace(Mat *faceFrame, string csv_path, int image_width, int image_height);
 static void read_csv(const string& filename, vector<Mat>& images, vector<int>& labels);
 string getSubjectName(int thePrediction, double theConfidence, string csv_path);
 
@@ -88,6 +89,9 @@ int main (int argc, char *argv[]) {
     enableFaceRecognition = false;
   }
 
+  faceCascade.load(faceCascadeName);
+  string name_conf = "";
+
   while(true){
     
     //-----------------------------------------------
@@ -95,9 +99,10 @@ int main (int argc, char *argv[]) {
     //-----------------------------------------------
     cap >> frame;
     
-    if(frame.empty())
+    if(frame.empty()){
+      cout << "frame is empty" << endl;
       continue;
-
+    }
     //-----------------------------------------------
     // PEOPLE DETECTION
     //
@@ -111,7 +116,12 @@ int main (int argc, char *argv[]) {
     
     if(!peopleCounter){
       people = detectPeople(frame);      
-      peopleCounter = 100;
+      
+      if(!people.empty()){
+        peopleCounter = 400;        
+      }else{
+        continue;
+      }
     }
 
     //-----------------------------------------------
@@ -126,17 +136,28 @@ int main (int argc, char *argv[]) {
     // - if a face shows up for one frame, ignore it
     // - if a good face is found, start performing recognition
     // - start recording video of walking up to door
-
-    faceCascade.load(faceCascadeName);
-
     
-    if(!people.empty()){
 
-      if(!faceCounter){
-        detectFaces(frame);        
-        faceCounter = 20;
+    detectFaces(frame);
+
+    if(!faceCounter){
+      
+
+      if(enableFaceRecognition && !faces.empty()){
+
+        for(size_t i = 0; i < faces.size(); i++){
+          Rect face = faces[i];
+          Mat faceFrame = frame(face);
+          imshow("The Face", faceFrame);
+          name_conf = recognizeFace(&faceFrame, csvPath, imWidth, imHeight);
+
+        }
       }
+      
+
+      faceCounter = 30;   
     }
+    
     
     if(!faces.empty()){
 
@@ -149,48 +170,23 @@ int main (int argc, char *argv[]) {
 
           // optional, print someone's coordinates
           //cout << "(" << people[i].x << "," << people[i].y << ") " << endl;
-          camshiftTrack(frame, face);
+          imshow("VJ Face", frame(face));
+
+          Rect trackFace = Rect(face.x+face.width*.1,face.y+face.height*.1,face.width*.9, face.height*.9);
+          imshow("Track Face", frame(trackFace));
+          //camshiftTrack(frame, trackFace);
+          putText(frame, name_conf, Point(face.x, face.y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0), 2.0);
         }
-      }
-
-      /*
-      if(enableFaceRecognition){
-        recognizeFaces(frame, csvPath, imWidth, imHeight);
-      }
-      */
+      } 
     }
-
-
-    //-----------------------------------------------
-    // TRACK & SHOW
-    //-----------------------------------------------
-
-    // todo:
-    // - sepate thread for displaying
-    // - track people if no faces
-    
-    /*
-
-    if(!people.empty()){
-
-      for(size_t i = 0; i < people.size(); i++){
-        Rect person = people[i];
-
-        if(person.x > 0 && person.y > 0 && 
-           person.x + person.width <= frame.cols && 
-           person.y + person.height <= frame.rows){
-
-          // optional, print someone's coordinates
-          //cout << "(" << people[i].x << "," << people[i].y << ") " << endl;
-          camshiftTrack(frame, person);
-        }
-      }
-    }
-    */
 
     imshow(window, frame);
-    peopleCounter--;
+    peopleCounter = peopleCounter > 0 ? peopleCounter - 1 : 0;
     faceCounter = faceCounter > 0 ? faceCounter - 1 : 0;
+
+
+    cout << "peopleCounter: " << peopleCounter << endl;
+    cout << "faceCounter: " << faceCounter << endl;
     
     //-----------------------------------------
     // EXIT
@@ -243,6 +239,10 @@ vector<Rect> detectPeople(Mat frame) {
     
     rectangle(frame, r.tl(), r.br(), Scalar(0,255,0), 1);        
   }
+
+  cout << "--------------------------------------------" << endl;
+  cout << "function: detectPeople" << endl;
+  cout << "--------------------------------------------" << endl;
 
   return filtered;
 }
@@ -318,6 +318,8 @@ void camshiftTrack(Mat frame, Rect trackWindow) {
   }
 
   ellipse(frame, trackBox, Scalar(0,255,0), 1);
+
+  cout << "TRACKING RIGHT NOW" << endl;
 }
 
 /**
@@ -364,6 +366,40 @@ static void read_csv(const string& filename, vector<Mat>& images, vector<int>& l
     }
     cout << "Done!" << endl;
 }
+
+/**
+ * Recognize a single face.
+ */
+string recognizeFace(Mat *faceFrame, string csv_path, int image_width, int image_height) {
+  Mat gray;
+  cvtColor(*faceFrame, gray, CV_BGR2GRAY);
+
+  // Crop the face from the image. So simple with OpenCV C++:
+
+  Mat face_resized;
+
+  cv::resize(gray, face_resized, Size(image_width, image_height), 1.0, 1.0, INTER_CUBIC);
+
+  
+  //imshow("Face",face);
+  // Now perform the prediction:
+  int predictionID;
+  double predictionConfidence;
+  model->predict(face_resized,predictionID,predictionConfidence);
+
+
+  // And now put it into the image:
+
+  string subj_name = getSubjectName(predictionID,predictionConfidence,csv_path);
+  //putText(*mainFrame, format("%s %f",subj_name.c_str(),predictionConfidence), Point(x, y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0), 2.0);
+
+  //cout << "name: " << subj_name << ", confidence: " << (double)predictionConfidence << endl;
+
+
+  return format("%s %.2f",subj_name.c_str(),predictionConfidence);
+}
+
+
 /**
  * Recognize faces.
  */
@@ -387,7 +423,7 @@ void recognizeFaces(Mat *frame, vector< Rect_<int> > faces, string csv_path, int
             // Since I am showing the Fisherfaces algorithm here, I also show how to resize the
             // face you have just found:
 
-            Mat face_resized, norm_resized, gray, norm, float_gray, blur, num, den;
+            Mat face_resized, norm_resized, norm, float_gray, blur, num, den;
 
              // convert to floating-point image
              //face.convertTo(float_gray, CV_32F, 1.0/255.0);
@@ -412,7 +448,7 @@ void recognizeFaces(Mat *frame, vector< Rect_<int> > faces, string csv_path, int
             model->predict(face_resized,predictionID,predictionConfidence);
             // And finally write all we've found out to the original image!
             // First of all draw a green rectangle around the detected face:
-            rectangle(*frame, face_i, CV_RGB(0, 255,0), 1);
+            //rectangle(*frame, face_i, CV_RGB(0, 255,0), 1);
             // Calculate the position for annotated text (make sure we don't
             // put illegal values in there):
             int pos_x = std::max(face_i.tl().x - 10, 0);
@@ -441,10 +477,10 @@ void recognizeFaces(Mat *frame, vector< Rect_<int> > faces, string csv_path, int
  */
 
 string getSubjectName(int thePrediction, double theConfidence, string csvPath) {
-  double confidenceThresh = 300;
+  double confidenceThresh = 800;
 
   if(theConfidence >= confidenceThresh){
-     //  return "unknown";
+       return "unknown";
   }
 
   string predictionString = format("%d",thePrediction);

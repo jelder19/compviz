@@ -57,8 +57,8 @@ void captureTheFace(int picNum, Mat frame, VideoCapture cap, Mat *theFacePtr){
     // Get the height from the first image. We'll need this
     // later in code to reshape the images to their original
     // size AND we need to reshape incoming faces to this size:
-    int im_width = 512;
-    int im_height = 512;
+    int im_width = 64;
+    int im_height = 64;
     /*if(!images[0].empty()){
         im_width = images[0].cols;
         im_height = images[0].rows;
@@ -152,13 +152,13 @@ int main(int argc, const char *argv[])
 
 
 
-    VideoCapture cap(-1); // open the default camera
+    VideoCapture cap(1); // open the default camera
     if(!cap.isOpened())  // check if we succeeded
         return -1;
 
     cout << "\t Checking directory structure" << endl;
 
-    string pgm_path = format("/home/ryan/compviz/facerec/data/at/%s",subject_name.c_str());
+    string pgm_path = format("facerec/data/at/%s",subject_name.c_str());
     int n = 0;
     struct stat st = {0};
     if (stat(pgm_path.c_str(), &st) == -1) {
@@ -182,7 +182,7 @@ int main(int argc, const char *argv[])
 
         cout << "Preparing image " << i << ":" << endl;
 
-        pgm_path =format("/home/ryan/compviz/facerec/data/at/%s/%d.pgm",subject_name.c_str(),i);
+        pgm_path =format("facerec/data/at/%s/%d.pgm",subject_name.c_str(),i);
 
         cout << "Preparing to write image to " << pgm_path << endl;
 
