@@ -57,16 +57,16 @@ void captureTheFace(int picNum, Mat frame, VideoCapture cap, Mat *theFacePtr){
     // Get the height from the first image. We'll need this
     // later in code to reshape the images to their original
     // size AND we need to reshape incoming faces to this size:
-    int im_width = 512;
-    int im_height = 512;
-    /*if(!images[0].empty()){
+    int im_width;
+    int im_height;
+    if(!images[0].empty()){
         im_width = images[0].cols;
         im_height = images[0].rows;
     }else{
-        im_width = 512;
-        im_height = 512;
+        im_width = 64;
+        im_height = 64;
     }
-*/
+
     CascadeClassifier haar_cascade;
     haar_cascade.load(face_cascade_name);
 

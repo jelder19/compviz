@@ -51,7 +51,7 @@ int main(int argc, const char *argv[]) {
     }
     // Get the path to your CSV:
     string fn_csv = string(argv[1]);
-    int deviceId = 1;
+    int deviceId = -1;
     // These vectors hold the images and corresponding labels:
     vector<Mat> images;
     vector<int> labels;
